@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/diamondburned/arikawa/v2/api"
 	"github.com/diamondburned/arikawa/v2/discord"
@@ -13,27 +14,14 @@ import (
 )
 
 var bot_session *session.Session
-var bonk_command = api.CreateCommandData{
-	Name:        "bonk",
-	Description: "Bonks a given user",
-	Options: []discord.CommandOption{
-		{
-			Type:        discord.StringOption,
-			Name:        "whom",
-			Description: "User to bonk",
-			Required:    true,
-		},
-	},
-}
-var bonk_emote string = "<:BONK:864836906898423828>"
 
-type member struct {
+type Member struct {
 	id   discord.Snowflake
 	name string
 	nick string
 }
 
-var guild_members []member
+var guild_members []Member
 
 func createSession() (discord.AppID, discord.GuildID) {
 	mustSnowflakeEnv := func(env string) discord.Snowflake {
@@ -113,13 +101,30 @@ func getGuildMembers(appID discord.AppID, guildID discord.GuildID) (members []di
 	return
 }
 
-func abbrevMembers(members []discord.Member) (am []member) {
+func abbrevMembers(members []discord.Member) (am []Member) {
 	for _, mem := range members {
-		am = append(am, member{
+		am = append(am, Member{
 			id:   discord.Snowflake(mem.User.ID),
 			name: mem.User.Username,
 			nick: mem.Nick,
 		})
 	}
 	return
+}
+
+func getUserID(e *gateway.InteractionCreateEvent, name string) string {
+	userID := e.Member.User.ID.String()
+
+	if strings.HasPrefix(name, "<@!") {
+		userID = name[3 : len(name)-1]
+	} else {
+		for _, mem := range guild_members {
+			if name == mem.name || name == mem.nick {
+				userID = mem.id.String()
+				break
+			}
+		}
+	}
+
+	return userID
 }

@@ -1,4 +1,4 @@
-module Spyfall_bot
+module rpg_bot
 
 go 1.16
 
