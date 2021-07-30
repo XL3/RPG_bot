@@ -1,14 +1,14 @@
 package main
 
 import (
-	"os"
 	"log"
+	"os"
 
 	"github.com/diamondburned/arikawa/v2/api"
 	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/gateway"
 	"github.com/diamondburned/arikawa/v2/session"
 	"github.com/diamondburned/arikawa/v2/utils/httputil/httpdriver"
-	"github.com/diamondburned/arikawa/v2/gateway"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -27,14 +27,15 @@ var bonk_command = api.CreateCommandData{
 }
 var bonk_emote string = "<:BONK:864836906898423828>"
 
-type Member struct {
-	ID discord.Snowflake
+type member struct {
+	id   discord.Snowflake
 	name string
 	nick string
 }
-var guild_members []Member
 
-func create_session() (discord.AppID, discord.GuildID) {
+var guild_members []member
+
+func createSession() (discord.AppID, discord.GuildID) {
 	mustSnowflakeEnv := func(env string) discord.Snowflake {
 		s, err := discord.ParseSnowflake(os.Getenv(env))
 		if err != nil {
@@ -60,12 +61,12 @@ func create_session() (discord.AppID, discord.GuildID) {
 	return appID, guildID
 }
 
-func configure_session() {
+func configureSession() {
 	bot_session.AddHandler(func(e *gateway.InteractionCreateEvent) {
 		com := e.Data.Name
 		switch com {
 		case "bonk":
-			handle_bonk(e, e.Data.Options[0].Value)
+			handleBonk(e, e.Data.Options[0].Value)
 		}
 	})
 
@@ -75,8 +76,7 @@ func configure_session() {
 	bot_session.Gateway.AddIntents(gateway.IntentGuildMembers)
 }
 
-
-func create_guild_commands(appID discord.AppID, guildID discord.GuildID) {
+func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	commands, err := bot_session.GuildCommands(appID, guildID)
 	if err != nil {
 		log.Fatalln("failed to get guild commands:", err)
@@ -97,10 +97,10 @@ func create_guild_commands(appID discord.AppID, guildID discord.GuildID) {
 	}
 }
 
-func get_guild_members(appID discord.AppID, guildID discord.GuildID) (members []discord.Member) {
-	url := api.EndpointGuilds+guildID.String()+"/members"
+func getGuildMembers(appID discord.AppID, guildID discord.GuildID) (members []discord.Member) {
+	url := api.EndpointGuilds + guildID.String() + "/members"
 
-	limit_opt := func (r httpdriver.Request) error {
+	limit_opt := func(r httpdriver.Request) error {
 		r.AddQuery(map[string][]string{
 			"limit": {"10"},
 		})
@@ -113,11 +113,11 @@ func get_guild_members(appID discord.AppID, guildID discord.GuildID) (members []
 	return
 }
 
-func abbrev_members(members []discord.Member) (am []Member) {
+func abbrevMembers(members []discord.Member) (am []member) {
 	for _, mem := range members {
-		am = append(am, Member{ 
-			ID: discord.Snowflake(mem.User.ID), 
-			name: mem.User.Username, 
+		am = append(am, member{
+			id:   discord.Snowflake(mem.User.ID),
+			name: mem.User.Username,
 			nick: mem.Nick,
 		})
 	}
