@@ -3,15 +3,12 @@ package main
 import (
 	"log"
 	"math/rand"
-
-	"github.com/diamondburned/arikawa/v2/gateway"
 )
 
-type Roulette struct {
-}
+type Roulette struct{}
 
-func (r Roulette) initSession(id Key) *Session {
-	session, err := createNewSession(id)
+func (r Roulette) initGame(id Key) *Game {
+	session, err := createNewGame(id)
 
 	if err != nil {
 		log.Fatal("Failed to initialize session", err)
@@ -20,11 +17,11 @@ func (r Roulette) initSession(id Key) *Session {
 	return session
 }
 
-func (r Roulette) startTurn(session *Session) {
-	size := len(session.players)
+func (r Roulette) startTurn(game *Game) {
+	size := len(game.players)
 	target := rand.Intn(size)
 
-	for i, player := range session.players {
+	for i, player := range game.players {
 		if i != target {
 			player.assignAndDMRole("Spared")
 		} else {
@@ -33,22 +30,25 @@ func (r Roulette) startTurn(session *Session) {
 			player.score = -1
 		}
 
-		log.Println(session.players[i])
+		log.Println(game.players[i])
 	}
 }
 
-func (r Roulette) updateState(session *Session) {
-	size := len(session.players)
-	for i, player := range session.players {
+func (r Roulette) updateState(game *Game) {
+	size := len(game.players)
+	for i, player := range game.players {
 		if player.score < 0 {
-			session.players[i] = session.players[size-1]
-			session.players = session.players[:size-1]
+			game.players[i] = game.players[size-1]
+			game.players = game.players[:size-1]
 			return
 		}
 	}
 }
 
-func Roulette_registerPlayer(e *gateway.InteractionCreateEvent, session *Session) {
-	userID := e.Member.User.ID.String()
-	session.registerPlayer(userID)
+func (r Roulette) endGame(id Key) {
+	_, err := getGame(id)
+
+	if err == nil {
+		delete(active_games, id)
+	}
 }

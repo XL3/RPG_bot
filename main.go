@@ -6,7 +6,7 @@ import (
 
 func main() {
 	appID, guildID := createSession()
-	configureSession()
+	configureSession(Roulette{})
 
 	if err := bot_session.Open(); err != nil {
 		log.Fatalln("failed to open:", err)

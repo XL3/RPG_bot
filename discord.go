@@ -20,7 +20,6 @@ type Member struct {
 	name string
 	nick string
 }
-
 var guild_members []Member
 
 func createSession() (discord.AppID, discord.GuildID) {
@@ -49,12 +48,32 @@ func createSession() (discord.AppID, discord.GuildID) {
 	return appID, guildID
 }
 
-func configureSession() {
+
+func configureSession(opr Operator) {
+	configureCommandHandlers(opr)
+
 	bot_session.AddHandler(func(e *gateway.InteractionCreateEvent) {
 		com := e.Data.Name
+		opt := e.Data.Options
 		switch com {
 		case "bonk":
-			handleBonk(e, e.Data.Options[0].Value)
+			name := opt[0].Value
+			handleBonk(e, name)
+
+		case "init-game":
+			rpg_commands["init-game"].process(e)
+
+		case "register-player":
+			rpg_commands["register-player"].process(e)
+
+		case "start-turn":
+			rpg_commands["start-turn"].process(e)
+
+		case "end-turn":
+			rpg_commands["end-turn"].process(e)
+
+		case "end-game":
+			rpg_commands["end-game"].process(e)
 		}
 	})
 
@@ -74,7 +93,12 @@ func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 		log.Println("Existing command", command.Name, command.ID, "found.")
 	}
 
-	newCommands := []api.CreateCommandData{bonk_command}
+
+	newCommands := []api.CreateCommandData{}
+	for _, command := range rpg_commands {
+		newCommands = append(newCommands, command.command)
+	}
+	// newCommands = append(newCommands, bonk_command)
 
 	for _, command := range newCommands {
 		_, err := bot_session.CreateGuildCommand(appID, guildID, command)
