@@ -1,4 +1,4 @@
-package main
+package rpg_bot
 
 import (
 	"errors"
@@ -13,39 +13,44 @@ import (
 
 type Key uint64
 type Operator interface {
-	initGame(id Key) *Game
-	startTurn(game *Game)
-	updateState(game *Game)
-	endGame(id Key)
+	InitGame(id Key) *Game
+	StartTurn(game *Game)
+	UpdateState(game *Game)
+	EndGame(id Key)
+	String() string
 }
 
 type Null_Operator struct{}
 
-func (no Null_Operator) initGame(id Key) *Game  { return nil }
-func (no Null_Operator) startTurn(game *Game)   {}
-func (no Null_Operator) updateState(game *Game) {}
-func (no Null_Operator) endGame(id Key) {}
+func (no Null_Operator) InitGame(id Key) *Game  { return nil }
+func (no Null_Operator) StartTurn(game *Game)   {}
+func (no Null_Operator) UpdateState(game *Game) {}
+func (no Null_Operator) EndGame(id Key)         {}
+func (no Null_Operator) String() string         { return "Null" }
 
 // ===========================================================================
 type Game struct {
-	id      Key
-	players []Player
+	ID      Key
+	Players []Player
 }
 
 var active_games map[Key]*Game
 
-func (game *Game) registerPlayer(userID string) {
-	for _, p := range game.players {
+func (game *Game) RegisterPlayer(userID string) {
+	for _, p := range game.Players {
 		if p.id.String() == userID {
 			return
 		}
 	}
 
 	player := createPlayer(userID)
-	game.players = append(game.players, player)
+	game.Players = append(game.Players, player)
 }
 
-func getGame(id Key) (*Game, error) {
+func GetGame(id Key) (*Game, error) {
+	if active_games == nil {
+		active_games = make(map[Key]*Game)
+	}
 	game, ok := active_games[id]
 	if !ok {
 		return nil, errors.New("game not found")
@@ -53,38 +58,45 @@ func getGame(id Key) (*Game, error) {
 	return game, nil
 }
 
-func createNewGame(id Key) (*Game, error) {
-	game, err := getGame(id)
+func CreateNewGame(id Key) (*Game, error) {
+	game, err := GetGame(id)
 	if err == nil {
 		return game, errors.New("game id exists")
 	}
 
-	active_games[id] = &Game{id: id}
+	active_games[id] = &Game{ID: id}
 	return active_games[id], nil
 }
 
+func DeleteGame(id Key) {
+	_, err := GetGame(id)
+
+	if err == nil {
+		delete(active_games, id)
+	}
+}
 
 // ===========================================================================
 type Player struct {
 	Member
-	role  string
-	score int
+	Role  string
+	Score int
 }
 
-func (p *Player) assignAndDMRole(role string) error {
-	p.role = role
+func (p *Player) AssignAndDMRole(role string) error {
+	p.Role = role
 
 	ch, err := bot_session.CreatePrivateChannel(discord.UserID(p.id))
 	if err != nil {
 		return err
 	}
 
-	_, err = bot_session.SendMessage(ch.ID, p.role, nil)
+	_, err = bot_session.SendMessage(ch.ID, p.Role, nil)
 	return err
 }
 
 func (p Player) String() string {
-	return fmt.Sprintf("[%s] %s, %d", p.id, p.role, p.score)
+	return fmt.Sprintf("[%s] %s, %d", p.id, p.Role, p.Score)
 }
 
 func createPlayer(userID string) Player {
@@ -100,26 +112,49 @@ func createPlayer(userID string) Player {
 // ===========================================================================
 // Commands
 type Command_Handler struct {
-	process func (e *gateway.InteractionCreateEvent)
+	process func(e *gateway.InteractionCreateEvent)
 	command api.CreateCommandData
 }
 
 var rpg_commands map[string]Command_Handler
+
+func respondToInteraction(e *gateway.InteractionCreateEvent, response string) {
+	// Respond to interaction
+	data := api.InteractionResponse{
+		Type: api.MessageInteractionWithSource,
+		Data: &api.InteractionResponseData{
+			Content: response,
+		},
+	}
+
+	if err := bot_session.RespondInteraction(e.ID, e.Token, data); err != nil {
+		log.Println("failed to send interaction callback:", err)
+	}
+}
+
+// TODO(Abdelrahman) Better error handling
 func configureCommandHandlers(opr Operator) {
+	if rpg_commands == nil {
+		rpg_commands = make(map[string]Command_Handler)
+	}
+
 	rpg_commands["init-game"] = Command_Handler{
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
-			opr.initGame(Key(id))
+			opr.InitGame(Key(id))
+
+			response := fmt.Sprintf("Game[%d] initialized, %s!", id, opr.String())
+			respondToInteraction(e, response)
 		},
 
 		// TODO(Abdelrahman) Automate id creation
 		command: api.CreateCommandData{
 			Name:        "init-game",
 			Description: "Starts a new game, given an id",
-			Options:     []discord.CommandOption{
+			Options: []discord.CommandOption{
 				{
-					Type: discord.StringOption,
+					Type:        discord.StringOption,
 					Name:        "id",
 					Description: "Game id",
 					Required:    true,
@@ -132,21 +167,24 @@ func configureCommandHandlers(opr Operator) {
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
-			game, err := getGame(Key(id))
+			game, err := GetGame(Key(id))
 			if err != nil {
-				game, _ = createNewGame(Key(id))
+				game, _ = CreateNewGame(Key(id))
 			}
 
 			userID := getUserID(e, "")
-			game.registerPlayer(userID)
+			game.RegisterPlayer(userID)
+
+			response := fmt.Sprintf("Registered <@%s> to game[%d]!", userID, id)
+			respondToInteraction(e, response)
 		},
 
 		command: api.CreateCommandData{
 			Name:        "register-player",
 			Description: "Register a player to a game, given an id",
-			Options:     []discord.CommandOption{
+			Options: []discord.CommandOption{
 				{
-					Type: discord.StringOption,
+					Type:        discord.StringOption,
 					Name:        "id",
 					Description: "Game id",
 					Required:    true,
@@ -159,20 +197,23 @@ func configureCommandHandlers(opr Operator) {
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
-			game, err := getGame(Key(id))
+			game, err := GetGame(Key(id))
 			if err != nil {
 				log.Println("failed to start turn", err)
 				return
 			}
 
-			opr.startTurn(game)
+			opr.StartTurn(game)
+
+			response := fmt.Sprintf("Starting a new turn! game[%d]", id)
+			respondToInteraction(e, response)
 		},
 		command: api.CreateCommandData{
 			Name:        "start-turn",
 			Description: "Starts a new turn, given a game id",
-			Options:     []discord.CommandOption{
+			Options: []discord.CommandOption{
 				{
-					Type: discord.StringOption,
+					Type:        discord.StringOption,
 					Name:        "id",
 					Description: "Game id",
 					Required:    true,
@@ -184,20 +225,23 @@ func configureCommandHandlers(opr Operator) {
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
-			game, err := getGame(Key(id))
+			game, err := GetGame(Key(id))
 			if err != nil {
 				log.Println("failed to end turn", err)
 				return
 			}
 
-			opr.updateState(game)
+			opr.UpdateState(game)
+
+			response := fmt.Sprintf("Ending turn! game[%d]", id)
+			respondToInteraction(e, response)
 		},
 		command: api.CreateCommandData{
 			Name:        "end-turn",
 			Description: "Ends the current turn, given a game id",
-			Options:     []discord.CommandOption{
+			Options: []discord.CommandOption{
 				{
-					Type: discord.StringOption,
+					Type:        discord.StringOption,
 					Name:        "id",
 					Description: "Game id",
 					Required:    true,
@@ -211,14 +255,17 @@ func configureCommandHandlers(opr Operator) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
 
-			opr.endGame(Key(id))
+			opr.EndGame(Key(id))
+
+			response := fmt.Sprintf("Game Over! game[%d]", id)
+			respondToInteraction(e, response)
 		},
 		command: api.CreateCommandData{
 			Name:        "end-game",
 			Description: "Ends the game, given a game id",
-			Options:     []discord.CommandOption{
+			Options: []discord.CommandOption{
 				{
-					Type: discord.StringOption,
+					Type:        discord.StringOption,
 					Name:        "id",
 					Description: "Game id",
 					Required:    true,

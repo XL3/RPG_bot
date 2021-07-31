@@ -1,4 +1,4 @@
-package main
+package rpg_bot
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ func handleBonk(e *gateway.InteractionCreateEvent, name string) {
 
 	bonk_content := fmt.Sprintf("%s <@%s>", bonk_emote, userID)
 
-	if err := player.assignAndDMRole(bonk_content); err != nil {
+	if err := player.AssignAndDMRole(bonk_content); err != nil {
 		log.Println("failed to send dm:", err)
 	}
 

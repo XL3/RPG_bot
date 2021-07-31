@@ -1,4 +1,4 @@
-package main
+package rpg_bot
 
 import (
 	"log"
@@ -20,9 +20,10 @@ type Member struct {
 	name string
 	nick string
 }
+
 var guild_members []Member
 
-func createSession() (discord.AppID, discord.GuildID) {
+func CreateSession() (discord.AppID, discord.GuildID) {
 	mustSnowflakeEnv := func(env string) discord.Snowflake {
 		s, err := discord.ParseSnowflake(os.Getenv(env))
 		if err != nil {
@@ -48,8 +49,7 @@ func createSession() (discord.AppID, discord.GuildID) {
 	return appID, guildID
 }
 
-
-func configureSession(opr Operator) {
+func ConfigureSession(opr Operator) {
 	configureCommandHandlers(opr)
 
 	bot_session.AddHandler(func(e *gateway.InteractionCreateEvent) {
@@ -83,7 +83,7 @@ func configureSession(opr Operator) {
 	bot_session.Gateway.AddIntents(gateway.IntentGuildMembers)
 }
 
-func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
+func CreateGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	commands, err := bot_session.GuildCommands(appID, guildID)
 	if err != nil {
 		log.Fatalln("failed to get guild commands:", err)
@@ -92,7 +92,6 @@ func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	for _, command := range commands {
 		log.Println("Existing command", command.Name, command.ID, "found.")
 	}
-
 
 	newCommands := []api.CreateCommandData{}
 	for _, command := range rpg_commands {
@@ -109,7 +108,7 @@ func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	}
 }
 
-func getGuildMembers(appID discord.AppID, guildID discord.GuildID) (members []discord.Member) {
+func GetGuildMembersAbbrev(appID discord.AppID, guildID discord.GuildID) (am []Member) {
 	url := api.EndpointGuilds + guildID.String() + "/members"
 
 	limit_opt := func(r httpdriver.Request) error {
@@ -119,13 +118,11 @@ func getGuildMembers(appID discord.AppID, guildID discord.GuildID) (members []di
 		return nil
 	}
 
+	var members []discord.Member
 	if err := bot_session.RequestJSON(&members, "GET", url, limit_opt); err != nil {
 		log.Fatalln("failed to get guild members:", err)
 	}
-	return
-}
 
-func abbrevMembers(members []discord.Member) (am []Member) {
 	for _, mem := range members {
 		am = append(am, Member{
 			id:   discord.Snowflake(mem.User.ID),
@@ -141,7 +138,7 @@ func getUserID(e *gateway.InteractionCreateEvent, name string) string {
 
 	if strings.HasPrefix(name, "<@!") {
 		userID = name[3 : len(name)-1]
-	} else {
+	} else if len(name) > 0 {
 		for _, mem := range guild_members {
 			if name == mem.name || name == mem.nick {
 				userID = mem.id.String()
@@ -151,4 +148,21 @@ func getUserID(e *gateway.InteractionCreateEvent, name string) string {
 	}
 
 	return userID
+}
+
+func StartBot(opr Operator) {
+	appID, guildID := CreateSession()
+	ConfigureSession(opr)
+
+	if err := bot_session.Open(); err != nil {
+		log.Fatalln("failed to open:", err)
+	}
+	defer bot_session.Close()
+	log.Println("Gateway connected.")
+
+	CreateGuildCommands(appID, guildID)
+	guild_members = GetGuildMembersAbbrev(appID, guildID)
+
+	// Block forever.
+	select {}
 }
