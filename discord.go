@@ -142,8 +142,8 @@ func StartBot(opr Operator) {
 	defer bot_session.Close()
 	log.Println("Gateway connected.")
 
-	createGuildCommands(appID, guildID)
 	guild_members = getGuildMembersAbbrev(appID, guildID)
+	createGuildCommands(appID, guildID)
 
 	// Block forever.
 	select {}
