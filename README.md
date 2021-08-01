@@ -1,8 +1,8 @@
 # RPG_bot
-A discord bot in go, to manage generic role-playing games.
+A discord bot in Go to manage generic role-playing games.
 
 ## Why?
-I wanted to practice go, and make something fun that people can tinker with.
+I wanted to practice Go, and make something fun that people can tinker with.
 
 ## How does it work?
 Go to the [Discord Developer Portal](https://discord.com/developers/) and get your bot set up.
@@ -11,10 +11,10 @@ The bot's environment should contain the variables `BOT_TOKEN`, `APP_ID`, and `G
 The idea is to implement the `Operator` interface
 ```go
 type Operator interface {
-	InitGame(id Key) *Game
+	InitGame(game *Game)
 	StartTurn(game *Game)
 	EndTurn(game *Game)
-	EndGame(id Key)
+	EndGame(game *Game)
 	String() string
 }
 ```

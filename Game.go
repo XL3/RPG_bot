@@ -91,10 +91,11 @@ func CreateNewGame(id Key) (*Game, error) {
 	return active_games[id], nil
 }
 
-func DeleteGame(id Key) {
-	_, err := GetGame(id)
-
+func DeleteGame(id Key) (*Game, error) {
+	game, err := GetGame(id)
 	if err == nil {
 		delete(active_games, id)
 	}
+
+	return game, err
 }

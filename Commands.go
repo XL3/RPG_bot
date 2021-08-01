@@ -23,34 +23,6 @@ func configureCommandHandlers(opr Operator) {
 		rpg_commands = make(map[string]Command_Handler)
 	}
 
-	rpg_commands["init-game"] = Command_Handler{
-		process: func(e *gateway.InteractionCreateEvent) {
-			opt := e.Data.Options
-			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
-
-			// Assign channel to game
-			game := opr.InitGame(Key(id))
-			game.ChID = e.ChannelID
-
-			response := fmt.Sprintf("Game initialized, %s", opr)
-			game.respondToInteraction(e, response)
-		},
-
-		// TODO(Abdelrahman) Automate id creation
-		command: api.CreateCommandData{
-			Name:        "init-game",
-			Description: "Starts a new game, given an id",
-			Options: []discord.CommandOption{
-				{
-					Type:        discord.StringOption,
-					Name:        "id",
-					Description: "Game id",
-					Required:    true,
-				},
-			},
-		},
-	}
-
 	rpg_commands["register-player"] = Command_Handler{
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
@@ -81,6 +53,40 @@ func configureCommandHandlers(opr Operator) {
 		},
 	}
 
+	rpg_commands["init-game"] = Command_Handler{
+		process: func(e *gateway.InteractionCreateEvent) {
+			opt := e.Data.Options
+			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
+
+			// Assign channel to game
+			game, err := CreateNewGame(Key(id))
+			if err != nil {
+				log.Println("Failed to create a new game: ", err)
+				return
+			}
+
+			game.ChID = e.ChannelID
+
+			response := fmt.Sprintf("Game initialized, %s", opr)
+			game.respondToInteraction(e, response)
+			opr.InitGame(game)
+		},
+
+		// TODO(Abdelrahman) Automate id creation
+		command: api.CreateCommandData{
+			Name:        "init-game",
+			Description: "Starts a new game, given an id",
+			Options: []discord.CommandOption{
+				{
+					Type:        discord.StringOption,
+					Name:        "id",
+					Description: "Game id",
+					Required:    true,
+				},
+			},
+		},
+	}
+
 	rpg_commands["start-turn"] = Command_Handler{
 		process: func(e *gateway.InteractionCreateEvent) {
 			opt := e.Data.Options
@@ -91,10 +97,9 @@ func configureCommandHandlers(opr Operator) {
 				return
 			}
 
-			opr.StartTurn(game)
-
 			response := "Starting a new turn!"
 			game.respondToInteraction(e, response)
+			opr.StartTurn(game)
 		},
 		command: api.CreateCommandData{
 			Name:        "start-turn",
@@ -119,10 +124,9 @@ func configureCommandHandlers(opr Operator) {
 				return
 			}
 
-			opr.EndTurn(game)
-
 			response := "Ending turn!"
 			game.respondToInteraction(e, response)
+			opr.EndTurn(game)
 		},
 		command: api.CreateCommandData{
 			Name:        "end-turn",
@@ -143,15 +147,15 @@ func configureCommandHandlers(opr Operator) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
 
-			game, err := GetGame(Key(id))
+			game, err := DeleteGame(Key(id))
 			if err != nil {
 				log.Println("failed to end game", err)
 				return
 			}
+
 			response := "Game Over!"
 			game.respondToInteraction(e, response)
-
-			opr.EndGame(Key(id))
+			opr.EndGame(game)
 		},
 		command: api.CreateCommandData{
 			Name:        "end-game",

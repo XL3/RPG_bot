@@ -6,20 +6,20 @@ import (
 
 type Key uint64
 type Operator interface {
-	InitGame(id Key) *Game
+	InitGame(game *Game)
 	StartTurn(game *Game)
 	EndTurn(game *Game)
-	EndGame(id Key)
+	EndGame(game *Game)
 	String() string
 }
 
 type Null_Operator struct{}
 
-func (no Null_Operator) InitGame(id Key) *Game { return nil }
-func (no Null_Operator) StartTurn(game *Game)  {}
-func (no Null_Operator) EndTurn(game *Game)    {}
-func (no Null_Operator) EndGame(id Key)        {}
-func (no Null_Operator) String() string        { return "Null" }
+func (no Null_Operator) InitGame(id Key)      {}
+func (no Null_Operator) StartTurn(game *Game) {}
+func (no Null_Operator) EndTurn(game *Game)   {}
+func (no Null_Operator) EndGame(game *Game)   {}
+func (no Null_Operator) String() string       { return "Null_Operator" }
 
 // ===========================================================================
 type Player struct {

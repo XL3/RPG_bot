@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 
 	rb "github.com/XL3/RPG_bot"
@@ -10,15 +9,18 @@ import (
 
 type Roulette struct{}
 
-func (r Roulette) InitGame(id rb.Key) *rb.Game {
-	game, err := rb.CreateNewGame(id)
-	if err != nil {
-		log.Fatal("Failed to initialize game", err)
-	}
-
-	return game
+/**
+ * Send a welcome message
+ */
+func (r Roulette) InitGame(game *rb.Game) {
+	game.MessageChannel("Welcome to Roulette! Please register to start playing!")
 }
 
+/**
+ * Choose a player at random to shoot
+ * Mark the player that has been shot
+ * Send each player what happened in a private message
+ */
 func (r Roulette) StartTurn(game *rb.Game) {
 	size := len(game.Players)
 	target := rand.Intn(size)
@@ -38,6 +40,9 @@ func (r Roulette) StartTurn(game *rb.Game) {
 	}
 }
 
+/**
+ * Reveal and remove the marked player from the game's list of players
+ */
 func (r Roulette) EndTurn(game *rb.Game) {
 	size := len(game.Players)
 	for i, player := range game.Players {
@@ -53,10 +58,12 @@ func (r Roulette) EndTurn(game *rb.Game) {
 	}
 }
 
-func (r Roulette) EndGame(id rb.Key) {
-	rb.DeleteGame(id)
+// Send a farewell message
+func (r Roulette) EndGame(game *rb.Game) {
+	game.MessageChannel("Thanks for playing! Until next time!")
 }
 
+// A string representation of the game
 func (r Roulette) String() string {
 	return "Roulette"
 }
