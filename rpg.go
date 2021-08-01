@@ -1,4 +1,4 @@
-package rpg_bot
+package RPG_bot
 
 import (
 	"fmt"

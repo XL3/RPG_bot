@@ -1,4 +1,4 @@
-module rpg_bot
+module github.com/XL3/RPG_bot
 
 go 1.16
 

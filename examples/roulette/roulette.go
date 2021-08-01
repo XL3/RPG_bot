@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	rb "rpg_bot"
+
+	rb "github.com/XL3/RPG_bot"
 )
 
 type Roulette struct{}
@@ -34,7 +35,7 @@ func (r Roulette) StartTurn(game *rb.Game) {
 		}
 
 		if err := game.MessagePlayer(player, msg); err != nil {
-			log.Fatal("Failed to message player", err)
+			log.Fatal("Failed to message player ", err)
 		}
 	}
 }
@@ -63,8 +64,9 @@ func (r Roulette) String() string {
 }
 
 func main() {
-	rr := Roulette{}
-	log.Println(rr)
+	// no := rb.Null_Operator{}
+	// rb.StartBot(no)
 
+	rr := Roulette{}
 	rb.StartBot(rr)
 }

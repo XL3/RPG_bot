@@ -1,4 +1,4 @@
-package rpg_bot
+package RPG_bot
 
 import (
 	"log"
@@ -15,15 +15,7 @@ import (
 
 var bot_session *session.Session
 
-type Member struct {
-	id   discord.Snowflake
-	name string
-	nick string
-}
-
-var guild_members []Member
-
-func CreateSession() (discord.AppID, discord.GuildID) {
+func createSession() (discord.AppID, discord.GuildID) {
 	mustSnowflakeEnv := func(env string) discord.Snowflake {
 		s, err := discord.ParseSnowflake(os.Getenv(env))
 		if err != nil {
@@ -49,12 +41,12 @@ func CreateSession() (discord.AppID, discord.GuildID) {
 	return appID, guildID
 }
 
-func ConfigureSession(opr Operator) {
+func configureSession(opr Operator) {
 	configureCommandHandlers(opr)
 
 	bot_session.AddHandler(func(e *gateway.InteractionCreateEvent) {
-		com := e.Data.Name
-		if handler, ok := rpg_commands[com]; ok {
+		command := e.Data.Name
+		if handler, ok := rpg_commands[command]; ok {
 			handler.process(e)
 		}
 	})
@@ -65,7 +57,7 @@ func ConfigureSession(opr Operator) {
 	bot_session.Gateway.AddIntents(gateway.IntentGuildMembers)
 }
 
-func CreateGuildCommands(appID discord.AppID, guildID discord.GuildID) {
+func createGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	commands, err := bot_session.GuildCommands(appID, guildID)
 	if err != nil {
 		log.Fatalln("failed to get guild commands:", err)
@@ -90,7 +82,7 @@ func CreateGuildCommands(appID discord.AppID, guildID discord.GuildID) {
 	}
 }
 
-func GetGuildMembersAbbrev(appID discord.AppID, guildID discord.GuildID) (am []Member) {
+func getGuildMembersAbbrev(appID discord.AppID, guildID discord.GuildID) (am []Member) {
 	url := api.EndpointGuilds + guildID.String() + "/members"
 
 	limit_opt := func(r httpdriver.Request) error {
@@ -132,9 +124,17 @@ func getUserID(e *gateway.InteractionCreateEvent, name string) string {
 	return userID
 }
 
+type Member struct {
+	id   discord.Snowflake
+	name string
+	nick string
+}
+
+var guild_members []Member
+
 func StartBot(opr Operator) {
-	appID, guildID := CreateSession()
-	ConfigureSession(opr)
+	appID, guildID := createSession()
+	configureSession(opr)
 
 	if err := bot_session.Open(); err != nil {
 		log.Fatalln("failed to open:", err)
@@ -142,8 +142,8 @@ func StartBot(opr Operator) {
 	defer bot_session.Close()
 	log.Println("Gateway connected.")
 
-	CreateGuildCommands(appID, guildID)
-	guild_members = GetGuildMembersAbbrev(appID, guildID)
+	createGuildCommands(appID, guildID)
+	guild_members = getGuildMembersAbbrev(appID, guildID)
 
 	// Block forever.
 	select {}

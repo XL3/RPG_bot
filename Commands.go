@@ -1,4 +1,4 @@
-package rpg_bot
+package RPG_bot
 
 import (
 	"fmt"
@@ -187,6 +187,7 @@ func configureCommandHandlers(opr Operator) {
 			game := Game{}
 			if err := game.MessagePlayer(player, bonk_content); err != nil {
 				log.Println("failed to send dm:", err)
+				return
 			}
 
 			// Respond to interaction

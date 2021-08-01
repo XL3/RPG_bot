@@ -1,4 +1,4 @@
-package rpg_bot
+package RPG_bot
 
 import (
 	"errors"
@@ -26,8 +26,13 @@ func (game *Game) RegisterPlayer(userID string) {
 	game.Players = append(game.Players, player)
 }
 
-func (game *Game) PrefixMessage(message string) string {
-	return fmt.Sprintf("`Game[%d]:` %s", game.ID, message)
+func (game *Game) String() string {
+	var str string
+	if game.ID > 0 {
+		str = fmt.Sprintf("`Game[%d]:` ", game.ID)
+	}
+
+	return str
 }
 
 func (game *Game) MessagePlayer(player Player, message string) error {
@@ -35,13 +40,13 @@ func (game *Game) MessagePlayer(player Player, message string) error {
 	dm, err := bot_session.CreatePrivateChannel(id)
 
 	if err == nil {
-		_, err = bot_session.SendMessage(dm.ID, game.PrefixMessage(message), nil)
+		_, err = bot_session.SendMessage(dm.ID, game.String()+message, nil)
 	}
 	return err
 }
 
 func (game *Game) MessageChannel(message string) error {
-	_, err := bot_session.SendMessage(game.ChID, game.PrefixMessage(message), nil)
+	_, err := bot_session.SendMessage(game.ChID, game.String()+message, nil)
 	return err
 }
 
