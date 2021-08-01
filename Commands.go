@@ -17,20 +17,6 @@ type Command_Handler struct {
 
 var rpg_commands map[string]Command_Handler
 
-func respondToInteraction(e *gateway.InteractionCreateEvent, response string) {
-	// Respond to interaction
-	data := api.InteractionResponse{
-		Type: api.MessageInteractionWithSource,
-		Data: &api.InteractionResponseData{
-			Content: response,
-		},
-	}
-
-	if err := bot_session.RespondInteraction(e.ID, e.Token, data); err != nil {
-		log.Println("failed to send interaction callback:", err)
-	}
-}
-
 // TODO(Abdelrahman) Better error handling
 func configureCommandHandlers(opr Operator) {
 	if rpg_commands == nil {
@@ -46,8 +32,8 @@ func configureCommandHandlers(opr Operator) {
 			game := opr.InitGame(Key(id))
 			game.ChID = e.ChannelID
 
-			response := fmt.Sprintf("Game[%d] initialized, %s!", id, opr.String())
-			respondToInteraction(e, response)
+			response := fmt.Sprintf("Game initialized, %s", opr)
+			game.respondToInteraction(e, response)
 		},
 
 		// TODO(Abdelrahman) Automate id creation
@@ -75,10 +61,10 @@ func configureCommandHandlers(opr Operator) {
 			}
 
 			userID := getUserID(e, "")
-			game.RegisterPlayer(userID)
+			player := game.RegisterPlayer(userID)
 
-			response := fmt.Sprintf("Registered <@%s> to game[%d]!", userID, id)
-			respondToInteraction(e, response)
+			response := fmt.Sprintf("Registered %s!", player)
+			game.respondToInteraction(e, response)
 		},
 
 		command: api.CreateCommandData{
@@ -107,8 +93,8 @@ func configureCommandHandlers(opr Operator) {
 
 			opr.StartTurn(game)
 
-			response := fmt.Sprintf("Starting a new turn! game[%d]", id)
-			respondToInteraction(e, response)
+			response := "Starting a new turn!"
+			game.respondToInteraction(e, response)
 		},
 		command: api.CreateCommandData{
 			Name:        "start-turn",
@@ -133,10 +119,10 @@ func configureCommandHandlers(opr Operator) {
 				return
 			}
 
-			opr.UpdateState(game)
+			opr.EndTurn(game)
 
-			response := fmt.Sprintf("Ending turn! game[%d]", id)
-			respondToInteraction(e, response)
+			response := "Ending turn!"
+			game.respondToInteraction(e, response)
 		},
 		command: api.CreateCommandData{
 			Name:        "end-turn",
@@ -157,10 +143,15 @@ func configureCommandHandlers(opr Operator) {
 			opt := e.Data.Options
 			id, _ := strconv.ParseUint(opt[0].Value, 10, 64)
 
-			opr.EndGame(Key(id))
+			game, err := GetGame(Key(id))
+			if err != nil {
+				log.Println("failed to end game", err)
+				return
+			}
+			response := "Game Over!"
+			game.respondToInteraction(e, response)
 
-			response := fmt.Sprintf("Game Over! game[%d]", id)
-			respondToInteraction(e, response)
+			opr.EndGame(Key(id))
 		},
 		command: api.CreateCommandData{
 			Name:        "end-game",
@@ -183,23 +174,12 @@ func configureCommandHandlers(opr Operator) {
 			userID := getUserID(e, name)
 			player := createPlayer(userID)
 
+			bonk_emote := "<:BONK:864836906898423828>"
 			bonk_content := fmt.Sprintf("%s %s", bonk_emote, player)
 			game := Game{}
-			if err := game.MessagePlayer(player, bonk_content); err != nil {
-				log.Println("failed to send dm:", err)
-				return
-			}
 
-			// Respond to interaction
-			data := api.InteractionResponse{
-				Type: api.MessageInteractionWithSource,
-				Data: &api.InteractionResponseData{
-					Content: "Bonked!",
-				},
-			}
-
-			if err := bot_session.RespondInteraction(e.ID, e.Token, data); err != nil {
-				log.Println("failed to send interaction callback:", err)
+			if err := game.MessagePlayer(player, bonk_content); err == nil {
+				game.respondToInteraction(e, "Bonked")
 			}
 		},
 		command: api.CreateCommandData{
@@ -216,5 +196,3 @@ func configureCommandHandlers(opr Operator) {
 		},
 	}
 }
-
-var bonk_emote string = "<:BONK:864836906898423828>"

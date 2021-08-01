@@ -3,27 +3,31 @@ package RPG_bot
 import (
 	"errors"
 	"fmt"
+	"log"
 
+	"github.com/diamondburned/arikawa/v2/api"
 	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/gateway"
 )
 
 type Game struct {
 	ID      Key
 	ChID    discord.ChannelID
-	Players []Player
+	Players []*Player
 }
 
 var active_games map[Key]*Game
 
-func (game *Game) RegisterPlayer(userID string) {
+func (game *Game) RegisterPlayer(userID string) *Player {
 	for _, p := range game.Players {
 		if p.id.String() == userID {
-			return
+			return p
 		}
 	}
 
 	player := createPlayer(userID)
-	game.Players = append(game.Players, player)
+	game.Players = append(game.Players, &player)
+	return &player
 }
 
 func (game *Game) String() string {
@@ -42,11 +46,27 @@ func (game *Game) MessagePlayer(player Player, message string) error {
 	if err == nil {
 		_, err = bot_session.SendMessage(dm.ID, game.String()+message, nil)
 	}
+	if err != nil {
+		log.Fatal("Failed to message player ", err)
+	}
 	return err
 }
 
 func (game *Game) MessageChannel(message string) error {
 	_, err := bot_session.SendMessage(game.ChID, game.String()+message, nil)
+	return err
+}
+
+func (game *Game) respondToInteraction(e *gateway.InteractionCreateEvent, response string) error {
+	// Respond to interaction
+	data := api.InteractionResponse{
+		Type: api.MessageInteractionWithSource,
+		Data: &api.InteractionResponseData{
+			Content: game.String() + response,
+		},
+	}
+
+	err := bot_session.RespondInteraction(e.ID, e.Token, data)
 	return err
 }
 

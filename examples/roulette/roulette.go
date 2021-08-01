@@ -27,20 +27,18 @@ func (r Roulette) StartTurn(game *rb.Game) {
 	for i, player := range game.Players {
 		if i != target {
 			player.Role = "spared"
-			msg = fmt.Sprintf("game[%d] Spared", game.ID)
+			msg = "You're in luck. You've been spared."
 		} else {
 			player.Role = "shot"
-			msg = fmt.Sprintf("game[%d] SHOT", game.ID)
+			msg = "You drew the short straw. You've been shot."
 			player.Score = -1
 		}
 
-		if err := game.MessagePlayer(player, msg); err != nil {
-			log.Fatal("Failed to message player ", err)
-		}
+		go game.MessagePlayer(*player, msg)
 	}
 }
 
-func (r Roulette) UpdateState(game *rb.Game) {
+func (r Roulette) EndTurn(game *rb.Game) {
 	size := len(game.Players)
 	for i, player := range game.Players {
 		// Remove the current player

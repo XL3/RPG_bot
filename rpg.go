@@ -8,18 +8,18 @@ type Key uint64
 type Operator interface {
 	InitGame(id Key) *Game
 	StartTurn(game *Game)
-	UpdateState(game *Game)
+	EndTurn(game *Game)
 	EndGame(id Key)
 	String() string
 }
 
 type Null_Operator struct{}
 
-func (no Null_Operator) InitGame(id Key) *Game  { return nil }
-func (no Null_Operator) StartTurn(game *Game)   {}
-func (no Null_Operator) UpdateState(game *Game) {}
-func (no Null_Operator) EndGame(id Key)         {}
-func (no Null_Operator) String() string         { return "Null" }
+func (no Null_Operator) InitGame(id Key) *Game { return nil }
+func (no Null_Operator) StartTurn(game *Game)  {}
+func (no Null_Operator) EndTurn(game *Game)    {}
+func (no Null_Operator) EndGame(id Key)        {}
+func (no Null_Operator) String() string        { return "Null" }
 
 // ===========================================================================
 type Player struct {
