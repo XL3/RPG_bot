@@ -10,39 +10,45 @@ import (
 type Roulette struct{}
 
 func (r Roulette) InitGame(id rb.Key) *rb.Game {
-	session, err := rb.CreateNewGame(id)
-
+	game, err := rb.CreateNewGame(id)
 	if err != nil {
 		log.Fatal("Failed to initialize game", err)
 	}
 
-	return session
+	return game
 }
 
 func (r Roulette) StartTurn(game *rb.Game) {
 	size := len(game.Players)
 	target := rand.Intn(size)
 
+	var msg string
 	for i, player := range game.Players {
 		if i != target {
-			role := fmt.Sprintf("game[%d] Spared", game.ID)
-			player.AssignAndDMRole(role)
+			player.Role = "spared"
+			msg = fmt.Sprintf("game[%d] Spared", game.ID)
 		} else {
-			role := fmt.Sprintf("game[%d] Shot", game.ID)
-			player.AssignAndDMRole(role)
+			player.Role = "shot"
+			msg = fmt.Sprintf("game[%d] SHOT", game.ID)
 			player.Score = -1
 		}
 
-		log.Println(game.Players[i])
+		if err := game.MessagePlayer(player, msg); err != nil {
+			log.Fatal("Failed to message player", err)
+		}
 	}
 }
 
 func (r Roulette) UpdateState(game *rb.Game) {
 	size := len(game.Players)
 	for i, player := range game.Players {
+		// Remove the current player
 		if player.Score < 0 {
 			game.Players[i] = game.Players[size-1]
 			game.Players = game.Players[:size-1]
+
+			msg := fmt.Sprintf("%s was shot!", player)
+			game.MessageChannel(msg)
 			return
 		}
 	}

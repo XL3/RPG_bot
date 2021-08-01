@@ -54,26 +54,8 @@ func ConfigureSession(opr Operator) {
 
 	bot_session.AddHandler(func(e *gateway.InteractionCreateEvent) {
 		com := e.Data.Name
-		opt := e.Data.Options
-		switch com {
-		case "bonk":
-			name := opt[0].Value
-			handleBonk(e, name)
-
-		case "init-game":
-			rpg_commands["init-game"].process(e)
-
-		case "register-player":
-			rpg_commands["register-player"].process(e)
-
-		case "start-turn":
-			rpg_commands["start-turn"].process(e)
-
-		case "end-turn":
-			rpg_commands["end-turn"].process(e)
-
-		case "end-game":
-			rpg_commands["end-game"].process(e)
+		if handler, ok := rpg_commands[com]; ok {
+			handler.process(e)
 		}
 	})
 
